@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FBI Internal Communication System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0e1a;
+            --panel: #0f1623;
+            --panel-light: #141d2e;
+            --border: #1a2a3e;
+            --border-light: #2a3f5c;
+            --text: #d4d4d8;
+            --text-dim: #6b7280;
+            --text-bright: #e4e4e7;
+            --blue: #3b82f6;
+            --blue-dim: #1e40af;
+            --green: #22c55e;
+            --red: #ef4444;
+            --amber: #f59e0b;
+            --cyan: #06b6d4;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0) 0px,
+                rgba(0, 0, 0, 0) 2px,
+                rgba(0, 0, 0, 0.04) 3px,
+                rgba(0, 0, 0, 0.04) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* === LOGIN SCREEN === */
+        #login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        .login-container {
+            max-width: 440px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .badge {
+            margin: 0 auto 24px;
+            opacity: 0.9;
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.6; }
+        }
+
+        .login-container h1 {
+            font-size: 14px;
+            color: var(--text-bright);
+            letter-spacing: 3px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .login-container h2 {
+            font-size: 11px;
+            color: var(--blue);
+            letter-spacing: 4px;
+            font-weight: 400;
+            margin-bottom: 32px;
+        }
+
+        .login-divider {
+            width: 60px;
+            height: 1px;
+            background: var(--border-light);
+            margin: 0 auto 32px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .login-form input {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text-bright);
+            padding: 14px 16px;
+            font-family: inherit;
+            font-size: 13px;
+            letter-spacing: 1px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            text-align: center;
+        }
+
+        .login-form input::placeholder {
+            color: var(--text-dim);
+            letter-spacing: 2px;
+        }
+
+        .login-form input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 1px var(--blue), 0 0 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .login-form button {
+            background: var(--panel);
+            border: 1px solid var(--blue-dim);
+            color: var(--blue);
+            padding: 14px;
+            font-family: inherit;
+            font-size: 13px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        .login-form button:hover {
+            background: var(--blue-dim);
+            color: #fff;
+            border-color: var(--blue);
+            box-shadow: 0 0 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .login-form button:active {
+            transform: scale(0.98);
+        }
+
+        .login-form button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .login-status {
+            margin-top: 20px;
+            font-size: 11px;
+            color: var(--text-dim);
+            min-height: 20px;
+            letter-spacing: 1px;
+        }
+
+        .login-status.error { color: var(--red); }
+        .login-status.success { color: var(--green); }
+
+        .login-hint {
+            margin-top: 28px;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            line-height: 1.8;
+        }
+
+        /* Connecting animation lines */
+        .conn-log {
+            text-align: left;
+            margin-top: 20px;
+            font-size: 11px;
+            color: var(--green);
+            min-height: 120px;
+            display: none;
+        }
+
+        .conn-log.visible { display: block; }
+
+        .conn-log .line {
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        /* === CHAT SCREEN === */
+        #chat-screen {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #chat-screen.visible {
+            display: flex;
+        }
+
+        .chat-header {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-badge {
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .header-titles {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-title {
+            font-size: 11px;
+            color: var(--text-bright);
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .header-sub {
+            font-size: 9px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .agents-online {
+            font-size: 10px;
+            color: var(--green);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .agents-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .header-clock {
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .btn-disconnect {
+            background: transparent;
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: 6px 12px;
+            font-family: inherit;
+            font-size: 10px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-disconnect:hover {
+            background: var(--red);
+            color: #fff;
+        }
+
+        /* Channel info bar */
+        .channel-bar {
+            background: var(--panel-light);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+
+        .channel-bar .left { color: var(--blue); }
+        .channel-bar .right { color: var(--text-dim); }
+
+        /* Messages area */
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            scroll-behavior: smooth;
+        }
+
+        #messages::-webkit-scrollbar { width: 6px; }
+        #messages::-webkit-scrollbar-track { background: transparent; }
+        #messages::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+        .msg {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-left: 2px solid var(--border-light);
+            background: rgba(15, 22, 35, 0.4);
+            border-radius: 0 4px 4px 0;
+            animation: slideIn 0.2s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-8px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .msg-header {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .msg-time {
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+
+        .msg-agent {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .msg-body {
+            font-size: 13px;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.7;
+        }
+
+        .msg-system {
+            border-left-color: var(--amber);
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .msg-system .msg-body {
+            color: var(--amber);
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .msg-alert {
+            border-left-color: var(--red);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .msg-alert .msg-body {
+            color: var(--red);
+        }
+
+        .msg-self .msg-body {
+            color: var(--text-bright);
+        }
+
+        /* Input area */
+        .chat-input {
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-bright);
+            padding: 10px 14px;
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--blue);
+        }
+
+        .chat-input button {
+            background: var(--blue-dim);
+            border: 1px solid var(--blue);
+            color: #fff;
+            padding: 0 20px;
+            font-family: inherit;
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .chat-input button:hover {
+            background: var(--blue);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .chat-input button:active {
+            transform: scale(0.97);
+        }
+
+        .chat-input button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Connection status */
+        .conn-status {
+            position: fixed;
+            bottom: 60px;
+            right: 16px;
+            font-size: 9px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .conn-status.visible { opacity: 1; }
+        .conn-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+        .conn-status.reconnecting .dot { background: var(--amber); animation: blink 0.5s infinite; }
+        .conn-status.error .dot { background: var(--red); }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: fixed;
+            bottom: 60px;
+            left: 16px;
+            font-size: 9px;
+            color: var(--text-dim);
+            cursor: pointer;
+            letter-spacing: 1px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .sound-toggle.visible { opacity: 0.6; }
+        .sound-toggle:hover { opacity: 1; }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .header-clock { display: none; }
+            .header-badge { display: none; }
+            .header-title { font-size: 10px; }
+            .header-sub { font-size: 8px; }
+            .msg { padding: 6px 10px; }
+            .msg-body { font-size: 12px; }
+            .chat-input input { font-size: 12px; padding: 8px 10px; }
+            .chat-input button { padding: 0 14px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- === LOGIN SCREEN === -->
+<div id="login-screen">
+    <div class="login-container">
+        <div class="badge">
+            <svg width="72" height="72" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="38" fill="none" stroke="#3b82f6" stroke-width="1.5"/>
+                <circle cx="40" cy="40" r="34" fill="none" stroke="#1e40af" stroke-width="0.5"/>
+                <circle cx="40" cy="40" r="28" fill="none" stroke="#1e40af" stroke-width="0.5" stroke-dasharray="2 3"/>
+                <path d="M40 10 L42.5 17.5 L50 17.5 L44 22 L46.5 29.5 L40 25 L33.5 29.5 L36 22 L30 17.5 L37.5 17.5 Z" fill="#3b82f6"/>
+                <text x="40" y="44" text-anchor="middle" fill="#3b82f6" font-size="16" font-weight="bold" font-family="monospace">FBI</text>
+                <text x="40" y="54" text-anchor="middle" fill="#1e40af" font-size="5" font-family="monospace" letter-spacing="0.5">FEDERAL BUREAU</text>
+                <text x="40" y="61" text-anchor="middle" fill="#1e40af" font-size="5" font-family="monospace" letter-spacing="0.5">OF INVESTIGATION</text>
+                <path d="M 10 40 A 30 30 0 0 1 15 25" fill="none" stroke="#1e40af" stroke-width="0.5"/>
+                <path d="M 70 40 A 30 30 0 0 1 65 55" fill="none" stroke="#1e40af" stroke-width="0.5"/>
+            </svg>
+        </div>
+
+        <h1>FEDERAL BUREAU OF INVESTIGATION</h1>
+        <h2>INTERNAL COMMUNICATION SYSTEM</h2>
+        <div class="login-divider"></div>
+
+        <div class="login-form">
+            <input type="text" id="access-code" placeholder="CHANNEL ACCESS CODE" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
+            <input type="text" id="agent-name" placeholder="AGENT CALLSIGN" autocomplete="off" spellcheck="false">
+            <button id="connect-btn">ESTABLISH CONNECTION</button>
+        </div>
+
+        <div class="login-status" id="login-status"></div>
+        <div class="conn-log" id="conn-log"></div>
+
+        <div class="login-hint">
+            AUTHORIZED PERSONNEL ONLY<br>
+            ALL COMMUNICATIONS ARE MONITORED AND RECORDED<br>
+            UNAUTHORIZED ACCESS IS A FEDERAL OFFENSE
+        </div>
+    </div>
+</div>
+
+<!-- === CHAT SCREEN === -->
+<div id="chat-screen">
+    <div class="chat-header">
+        <div class="header-left">
+            <svg class="header-badge" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="38" fill="none" stroke="#3b82f6" stroke-width="2"/>
+                <text x="40" y="48" text-anchor="middle" fill="#3b82f6" font-size="28" font-weight="bold" font-family="monospace">FBI</text>
+            </svg>
+            <div class="header-titles">
+                <span class="header-title">FBI INTERNAL COMMS</span>
+                <span class="header-sub" id="header-channel">SECURE CHANNEL</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="header-clock" id="header-clock"></span>
+            <span class="agents-online">
+                <span class="agents-dot"></span>
+                <span id="agents-count">0 ONLINE</span>
+            </span>
+            <button class="btn-disconnect" id="disconnect-btn">DISCONNECT</button>
+        </div>
+    </div>
+
+    <div class="channel-bar">
+        <span class="left" id="bar-channel">CHANNEL: ---</span>
+        <span class="right">CLASSIFICATION: FOR OFFICIAL USE ONLY // ENCRYPTED</span>
+    </div>
+
+    <div id="messages"></div>
+
+    <div class="conn-status" id="conn-status">
+        <span class="dot"></span>
+        <span id="conn-status-text">CONNECTED</span>
+    </div>
+
+    <div class="sound-toggle" id="sound-toggle">SOUND: ON</div>
+
+    <div class="chat-input">
+        <input type="text" id="message-input" placeholder="Type your message and press ENTER..." autocomplete="off" spellcheck="false">
+        <button id="send-btn">SEND</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    // === State ===
+    let client = null;
+    let channel = null;
+    let agentName = null;
+    let messages = [];
+    let onlineAgents = new Map();
+    let soundOn = true;
+    let pingInterval = null;
+    let cleanupInterval = null;
+    let clockInterval = null;
+
+    // === DOM ===
+    const loginScreen = document.getElementById('login-screen');
+    const chatScreen = document.getElementById('chat-screen');
+    const accessCodeInput = document.getElementById('access-code');
+    const agentNameInput = document.getElementById('agent-name');
+    const connectBtn = document.getElementById('connect-btn');
+    const loginStatus = document.getElementById('login-status');
+    const connLog = document.getElementById('conn-log');
+    const messagesEl = document.getElementById('messages');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const headerChannel = document.getElementById('header-channel');
+    const barChannel = document.getElementById('bar-channel');
+    const agentsCount = document.getElementById('agents-count');
+    const headerClock = document.getElementById('header-clock');
+    const connStatus = document.getElementById('conn-status');
+    const connStatusText = document.getElementById('conn-status-text');
+    const soundToggle = document.getElementById('sound-toggle');
+
+    // === Utils ===
+    function getTopic() {
+        return 'fbi-secure-comms/' + channel.toLowerCase();
+    }
+
+    function getStorageKey() {
+        return 'fbi-comms-' + channel.toLowerCase();
+    }
+
+    function uid() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function fmtTime(ts) {
+        const d = new Date(ts);
+        return d.getHours().toString().padStart(2, '0') + ':' +
+               d.getMinutes().toString().padStart(2, '0') + ':' +
+               d.getSeconds().toString().padStart(2, '0');
+    }
+
+    function fmtClock() {
+        const d = new Date();
+        const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+        return days[d.getDay()] + ' ' +
+               d.getFullYear() + '-' +
+               (d.getMonth()+1).toString().padStart(2,'0') + '-' +
+               d.getDate().toString().padStart(2,'0') + ' ' +
+               fmtTime(d.toISOString());
+    }
+
+    const AGENT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ec4899','#a855f7','#06b6d4','#f97316'];
+    function getAgentColor(name) {
+        let h = 0;
+        for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+        return AGENT_COLORS[Math.abs(h) % AGENT_COLORS.length];
+    }
+
+    // === Sound ===
+    let audioCtx = null;
+    function beep(freq, duration) {
+        if (!soundOn) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    // === Connecting animation ===
+    function showConnLog(lines) {
+        connLog.innerHTML = '';
+        connLog.classList.add('visible');
+        lines.forEach((line, i) => {
+            const el = document.createElement('div');
+            el.className = 'line';
+            el.textContent = '> ' + line;
+            el.style.animationDelay = (i * 0.3) + 's';
+            connLog.appendChild(el);
+        });
+    }
+
+    // === Connect ===
+    connectBtn.addEventListener('click', doConnect);
+    accessCodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') agentNameInput.focus(); });
+    agentNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doConnect(); });
+
+    function doConnect() {
+        const code = accessCodeInput.value.trim();
+        const name = agentNameInput.value.trim();
+
+        if (!code) {
+            loginStatus.className = 'login-status error';
+            loginStatus.textContent = '> ERROR: ACCESS CODE REQUIRED';
+            accessCodeInput.focus();
+            return;
+        }
+        if (!name) {
+            loginStatus.className = 'login-status error';
+            loginStatus.textContent = '> ERROR: AGENT CALLSIGN REQUIRED';
+            agentNameInput.focus();
+            return;
+        }
+        if (typeof mqtt === 'undefined') {
+            loginStatus.className = 'login-status error';
+            loginStatus.textContent = '> ERROR: COMMUNICATION MODULE FAILED TO LOAD. CHECK YOUR CONNECTION.';
+            return;
+        }
+
+        connectBtn.disabled = true;
+        accessCodeInput.disabled = true;
+        agentNameInput.disabled = true;
+        loginStatus.textContent = '';
+        loginStatus.className = 'login-status';
+
+        showConnLog([
+            'INITIALIZING SECURE CONNECTION...',
+            'AUTHENTICATING ACCESS CODE: ' + code.toUpperCase(),
+            'NEGOTIATING ENCRYPTION PROTOCOL...',
+            'ESTABLISHING SECURE CHANNEL...'
+        ]);
+
+        channel = code;
+        agentName = name;
+
+        const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+        const topic = getTopic();
+        const willMsg = JSON.stringify({
+            type: 'leave',
+            agent: agentName,
+            timestamp: new Date().toISOString()
+        });
+
+        client = mqtt.connect(brokerUrl, {
+            clientId: 'fbi-' + agentName + '-' + Math.random().toString(16).slice(2, 8),
+            clean: true,
+            reconnectPeriod: 3000,
+            connectTimeout: 15000,
+            will: {
+                topic: topic,
+                payload: willMsg,
+                qos: 1,
+                retain: false
+            }
+        });
+
+        client.on('connect', function() {
+            // Add final lines
+            const lines = connLog.querySelectorAll('.line');
+            const finalLines = [
+                'CONNECTION ESTABLISHED.',
+                'WELCOME, AGENT ' + agentName.toUpperCase() + '.',
+                'ENTERING SECURE CHANNEL...'
+            ];
+            finalLines.forEach((line, i) => {
+                const el = document.createElement('div');
+                el.className = 'line';
+                el.textContent = '> ' + line;
+                el.style.animationDelay = ((lines.length + i) * 0.3) + 's';
+                connLog.appendChild(el);
+            });
+
+            // Subscribe
+            client.subscribe(topic, { qos: 1 }, function(err) {
+                if (err) {
+                    loginStatus.className = 'login-status error';
+                    loginStatus.textContent = '> ERROR: FAILED TO SUBSCRIBE TO CHANNEL';
+                    connectBtn.disabled = false;
+                    accessCodeInput.disabled = false;
+                    agentNameInput.disabled = false;
+                    return;
+                }
+
+                // Announce join
+                publishMsg({
+                    type: 'join',
+                    agent: agentName,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Request history
+                publishMsg({
+                    type: 'sync_request',
+                    agent: agentName,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Switch to chat screen after animation
+                setTimeout(enterChat, 1800);
+            });
+        });
+
+        client.on('message', function(t, payload) {
+            try {
+                const data = JSON.parse(payload.toString());
+                handleMessage(data);
+            } catch(e) {
+                console.error('Parse error:', e);
+            }
+        });
+
+        client.on('error', function(err) {
+            console.error('MQTT error:', err);
+            loginStatus.className = 'login-status error';
+            loginStatus.textContent = '> ERROR: CONNECTION FAILED. RETRYING...';
+            connStatus.classList.add('error');
+            connStatus.classList.remove('reconnecting');
+            connStatusText.textContent = 'ERROR';
+        });
+
+        client.on('reconnect', function() {
+            connStatus.classList.add('reconnecting');
+            connStatus.classList.remove('error');
+            connStatusText.textContent = 'RECONNECTING...';
+        });
+
+        client.on('close', function() {
+            connStatus.classList.add('reconnecting');
+            connStatusText.textContent = 'RECONNECTING...';
+        });
+    }
+
+    function enterChat() {
+        loginScreen.style.display = 'none';
+        chatScreen.classList.add('visible');
+        headerChannel.textContent = 'SECURE CHANNEL: ' + channel.toUpperCase();
+        barChannel.textContent = 'CHANNEL: ' + channel.toUpperCase();
+        connStatus.classList.add('visible');
+        soundToggle.classList.add('visible');
+
+        // Load cached messages
+        loadMessages();
+        renderAllMessages();
+
+        // Start heartbeat
+        pingInterval = setInterval(function() {
+            publishMsg({
+                type: 'ping',
+                agent: agentName,
+                timestamp: new Date().toISOString()
+            });
+        }, 10000);
+
+        // Cleanup stale agents
+        cleanupInterval = setInterval(cleanupAgents, 5000);
+
+        // Clock
+        updateClock();
+        clockInterval = setInterval(updateClock, 1000);
+
+        // Track self as online
+        onlineAgents.set(agentName, Date.now());
+        updateAgentCount();
+
+        messageInput.focus();
+    }
+
+    function updateClock() {
+        headerClock.textContent = fmtClock();
+    }
+
+    // === Publish ===
+    function publishMsg(data) {
+        if (!client || !client.connected) return;
+        client.publish(getTopic(), JSON.stringify(data), { qos: 1 });
+    }
+
+    // === Handle messages ===
+    function handleMessage(data) {
+        switch(data.type) {
+            case 'message':
+                if (!messages.some(m => m.id === data.id)) {
+                    messages.push(data);
+                    saveMessages();
+                    renderMessage(data);
+                    if (data.agent !== agentName) beep(880, 0.08);
+                }
+                break;
+
+            case 'join':
+                if (data.agent !== agentName) {
+                    onlineAgents.set(data.agent, Date.now());
+                    addSystemMessage('*** AGENT ' + data.agent.toUpperCase() + ' HAS JOINED THE CHANNEL ***');
+                    updateAgentCount();
+                    beep(660, 0.12);
+                }
+                break;
+
+            case 'leave':
+                if (data.agent !== agentName) {
+                    onlineAgents.delete(data.agent);
+                    addSystemMessage('*** AGENT ' + data.agent.toUpperCase() + ' HAS DISCONNECTED ***');
+                    updateAgentCount();
+                }
+                break;
+
+            case 'ping':
+                onlineAgents.set(data.agent, Date.now());
+                updateAgentCount();
+                break;
+
+            case 'sync_request':
+                if (data.agent !== agentName && messages.length > 0) {
+                    setTimeout(function() {
+                        publishMsg({
+                            type: 'sync_response',
+                            agent: agentName,
+                            messages: messages,
+                            timestamp: new Date().toISOString()
+                        });
+                    }, 500 + Math.random() * 1000);
+                }
+                break;
+
+            case 'sync_response':
+                if (data.agent !== agentName) {
+                    let added = false;
+                    data.messages.forEach(function(m) {
+                        if (!messages.some(existing => existing.id === m.id)) {
+                            messages.push(m);
+                            added = true;
+                        }
+                    });
+                    if (added) {
+                        messages.sort(function(a, b) {
+                            return new Date(a.timestamp) - new Date(b.timestamp);
+                        });
+                        saveMessages();
+                        renderAllMessages();
+                    }
+                }
+                break;
+        }
+    }
+
+    function cleanupAgents() {
+        const now = Date.now();
+        let changed = false;
+        onlineAgents.forEach(function(lastSeen, name) {
+            if (now - lastSeen > 25000 && name !== agentName) {
+                onlineAgents.delete(name);
+                changed = true;
+            }
+        });
+        if (changed) updateAgentCount();
+    }
+
+    function updateAgentCount() {
+        const count = onlineAgents.size;
+        agentsCount.textContent = count + ' ONLINE';
+    }
+
+    // === Render ===
+    function renderAllMessages() {
+        messagesEl.innerHTML = '';
+        messages.forEach(renderMessage);
+        scrollToBottom();
+    }
+
+    function renderMessage(data) {
+        if (data.type === 'system') {
+            addSystemMessage(data.text, data.alert);
+            return;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'msg' + (data.agent === agentName ? ' msg-self' : '');
+
+        const header = document.createElement('div');
+        header.className = 'msg-header';
+
+        const time = document.createElement('span');
+        time.className = 'msg-time';
+        time.textContent = '[' + fmtTime(data.timestamp) + ']';
+
+        const agent = document.createElement('span');
+        agent.className = 'msg-agent';
+        agent.textContent = data.agent.toUpperCase();
+        agent.style.color = getAgentColor(data.agent);
+
+        header.appendChild(time);
+        header.appendChild(agent);
+
+        const body = document.createElement('div');
+        body.className = 'msg-body';
+        body.textContent = '> ' + data.text;
+
+        div.appendChild(header);
+        div.appendChild(body);
+
+        messagesEl.appendChild(div);
+        scrollToBottom();
+    }
+
+    function addSystemMessage(text, isAlert) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + (isAlert ? 'msg-alert' : 'msg-system');
+
+        const body = document.createElement('div');
+        body.className = 'msg-body';
+        body.textContent = text;
+
+        div.appendChild(body);
+        messagesEl.appendChild(div);
+        scrollToBottom();
+    }
+
+    function scrollToBottom() {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    // === Persistence ===
+    function saveMessages() {
+        try {
+            localStorage.setItem(getStorageKey(), JSON.stringify(messages));
+        } catch(e) {
+            console.error('Save error:', e);
+        }
+    }
+
+    function loadMessages() {
+        try {
+            const stored = localStorage.getItem(getStorageKey());
+            if (stored) {
+                messages = JSON.parse(stored);
+            }
+        } catch(e) {
+            messages = [];
+        }
+    }
+
+    // === Send ===
+    function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text || !client || !client.connected) return;
+
+        // Special commands
+        if (text.startsWith('/system ')) {
+            addSystemMessage('*** SYSTEM BROADCAST: ' + text.slice(8) + ' ***');
+            publishMsg({
+                type: 'message',
+                id: uid(),
+                agent: agentName,
+                text: text.slice(8),
+                timestamp: new Date().toISOString(),
+                system: true
+            });
+            // Also store as system message locally
+            messages.push({
+                type: 'system',
+                text: '*** SYSTEM BROADCAST: ' + text.slice(8) + ' ***',
+                timestamp: new Date().toISOString()
+            });
+            saveMessages();
+        } else if (text.startsWith('/alert ')) {
+            const alertText = text.slice(7);
+            const msg = {
+                id: uid(),
+                agent: agentName,
+                text: alertText,
+                timestamp: new Date().toISOString(),
+                alert: true
+            };
+            messages.push(msg);
+            saveMessages();
+            renderMessage(msg);
+            publishMsg({
+                type: 'message',
+                ...msg,
+                alert: true
+            });
+        } else if (text === '/clear') {
+            messagesEl.innerHTML = '';
+            addSystemMessage('*** SCREEN CLEARED ***');
+        } else if (text === '/help') {
+            addSystemMessage('*** AVAILABLE COMMANDS: /system /alert /clear /help ***');
+        } else {
+            const msg = {
+                id: uid(),
+                agent: agentName,
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+            messages.push(msg);
+            saveMessages();
+            renderMessage(msg);
+            publishMsg({
+                type: 'message',
+                ...msg
+            });
+        }
+
+        messageInput.value = '';
+        messageInput.focus();
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // === Disconnect ===
+    disconnectBtn.addEventListener('click', disconnect);
+
+    function disconnect() {
+        publishMsg({
+            type: 'leave',
+            agent: agentName,
+            timestamp: new Date().toISOString()
+        });
+
+        if (pingInterval) clearInterval(pingInterval);
+        if (cleanupInterval) clearInterval(cleanupInterval);
+        if (clockInterval) clearInterval(clockInterval);
+
+        if (client) {
+            client.end(true);
+            client = null;
+        }
+
+        onlineAgents.clear();
+        messages = [];
+
+        chatScreen.classList.remove('visible');
+        loginScreen.style.display = 'flex';
+        connLog.classList.remove('visible');
+        connLog.innerHTML = '';
+        loginStatus.className = 'login-status success';
+        loginStatus.textContent = '> SESSION TERMINATED. CONNECTION CLOSED.';
+        connectBtn.disabled = false;
+        accessCodeInput.disabled = false;
+        agentNameInput.disabled = false;
+        accessCodeInput.value = '';
+        agentNameInput.value = '';
+        accessCodeInput.focus();
+    }
+
+    // Handle page unload
+    window.addEventListener('beforeunload', function() {
+        if (client && client.connected) {
+            publishMsg({
+                type: 'leave',
+                agent: agentName,
+                timestamp: new Date().toISOString()
+            });
+            client.end(true);
+        }
+    });
+
+    // === Sound toggle ===
+    soundToggle.addEventListener('click', function() {
+        soundOn = !soundOn;
+        soundToggle.textContent = 'SOUND: ' + (soundOn ? 'ON' : 'OFF');
+    });
+
+    // Auto-focus
+    accessCodeInput.focus();
+
+})();
+</script>
+
+</body>
+</html>
