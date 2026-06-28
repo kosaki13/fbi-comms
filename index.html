@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FBI Internal Communication System</title>
+    <title>FBI 内部通讯系统</title>
     <style>
         * {
             margin: 0;
@@ -522,23 +522,23 @@
             </svg>
         </div>
 
-        <h1>FEDERAL BUREAU OF INVESTIGATION</h1>
-        <h2>INTERNAL COMMUNICATION SYSTEM</h2>
+        <h1>联邦调查局</h1>
+        <h2>内部通讯系统</h2>
         <div class="login-divider"></div>
 
         <div class="login-form">
-            <input type="text" id="access-code" placeholder="CHANNEL ACCESS CODE" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
-            <input type="text" id="agent-name" placeholder="AGENT CALLSIGN" autocomplete="off" spellcheck="false">
-            <button id="connect-btn">ESTABLISH CONNECTION</button>
+            <input type="text" id="access-code" placeholder="频道接入码" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
+            <input type="text" id="agent-name" placeholder="探员代号" autocomplete="off" spellcheck="false">
+            <button id="connect-btn">建立连接</button>
         </div>
 
         <div class="login-status" id="login-status"></div>
         <div class="conn-log" id="conn-log"></div>
 
         <div class="login-hint">
-            AUTHORIZED PERSONNEL ONLY<br>
-            ALL COMMUNICATIONS ARE MONITORED AND RECORDED<br>
-            UNAUTHORIZED ACCESS IS A FEDERAL OFFENSE
+            仅限授权人员使用<br>
+            所有通讯均受监控并记录<br>
+            未经授权访问为联邦违法行为
         </div>
     </div>
 </div>
@@ -552,37 +552,37 @@
                 <text x="40" y="48" text-anchor="middle" fill="#3b82f6" font-size="28" font-weight="bold" font-family="monospace">FBI</text>
             </svg>
             <div class="header-titles">
-                <span class="header-title">FBI INTERNAL COMMS</span>
-                <span class="header-sub" id="header-channel">SECURE CHANNEL</span>
+                <span class="header-title">FBI 内部通讯</span>
+                <span class="header-sub" id="header-channel">加密频道</span>
             </div>
         </div>
         <div class="header-right">
             <span class="header-clock" id="header-clock"></span>
             <span class="agents-online">
                 <span class="agents-dot"></span>
-                <span id="agents-count">0 ONLINE</span>
+                <span id="agents-count">0 人在线</span>
             </span>
-            <button class="btn-disconnect" id="disconnect-btn">DISCONNECT</button>
+            <button class="btn-disconnect" id="disconnect-btn">断开连接</button>
         </div>
     </div>
 
     <div class="channel-bar">
-        <span class="left" id="bar-channel">CHANNEL: ---</span>
-        <span class="right">CLASSIFICATION: FOR OFFICIAL USE ONLY // ENCRYPTED</span>
+        <span class="left" id="bar-channel">频道：---</span>
+        <span class="right">密级：仅供公务使用 // 已加密</span>
     </div>
 
     <div id="messages"></div>
 
     <div class="conn-status" id="conn-status">
         <span class="dot"></span>
-        <span id="conn-status-text">CONNECTED</span>
+        <span id="conn-status-text">已连接</span>
     </div>
 
-    <div class="sound-toggle" id="sound-toggle">SOUND: ON</div>
+    <div class="sound-toggle" id="sound-toggle">音效：开</div>
 
     <div class="chat-input">
-        <input type="text" id="message-input" placeholder="Type your message and press ENTER..." autocomplete="off" spellcheck="false">
-        <button id="send-btn">SEND</button>
+        <input type="text" id="message-input" placeholder="输入消息后按回车发送..." autocomplete="off" spellcheck="false">
+        <button id="send-btn">发送</button>
     </div>
 </div>
 
@@ -644,8 +644,8 @@
 
     function fmtClock() {
         const d = new Date();
-        const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-        return days[d.getDay()] + ' ' +
+        const days = ['日','一','二','三','四','五','六'];
+        return '周' + days[d.getDay()] + ' ' +
                d.getFullYear() + '-' +
                (d.getMonth()+1).toString().padStart(2,'0') + '-' +
                d.getDate().toString().padStart(2,'0') + ' ' +
@@ -702,19 +702,19 @@
 
         if (!code) {
             loginStatus.className = 'login-status error';
-            loginStatus.textContent = '> ERROR: ACCESS CODE REQUIRED';
+            loginStatus.textContent = '> 错误：请输入接入码';
             accessCodeInput.focus();
             return;
         }
         if (!name) {
             loginStatus.className = 'login-status error';
-            loginStatus.textContent = '> ERROR: AGENT CALLSIGN REQUIRED';
+            loginStatus.textContent = '> 错误：请输入探员代号';
             agentNameInput.focus();
             return;
         }
         if (typeof mqtt === 'undefined') {
             loginStatus.className = 'login-status error';
-            loginStatus.textContent = '> ERROR: COMMUNICATION MODULE FAILED TO LOAD. CHECK YOUR CONNECTION.';
+            loginStatus.textContent = '> 错误：通讯模块加载失败，请检查网络连接。';
             return;
         }
 
@@ -725,10 +725,10 @@
         loginStatus.className = 'login-status';
 
         showConnLog([
-            'INITIALIZING SECURE CONNECTION...',
-            'AUTHENTICATING ACCESS CODE: ' + code.toUpperCase(),
-            'NEGOTIATING ENCRYPTION PROTOCOL...',
-            'ESTABLISHING SECURE CHANNEL...'
+            '正在初始化安全连接...',
+            '正在验证接入码：' + code.toUpperCase(),
+            '正在协商加密协议...',
+            '正在建立加密频道...'
         ]);
 
         channel = code;
@@ -759,9 +759,9 @@
             // Add final lines
             const lines = connLog.querySelectorAll('.line');
             const finalLines = [
-                'CONNECTION ESTABLISHED.',
-                'WELCOME, AGENT ' + agentName.toUpperCase() + '.',
-                'ENTERING SECURE CHANNEL...'
+                '连接已建立。',
+                '欢迎，探员 ' + agentName.toUpperCase() + '。',
+                '正在进入加密频道...'
             ];
             finalLines.forEach((line, i) => {
                 const el = document.createElement('div');
@@ -775,7 +775,7 @@
             client.subscribe(topic, { qos: 1 }, function(err) {
                 if (err) {
                     loginStatus.className = 'login-status error';
-                    loginStatus.textContent = '> ERROR: FAILED TO SUBSCRIBE TO CHANNEL';
+                    loginStatus.textContent = '> 错误：订阅频道失败';
                     connectBtn.disabled = false;
                     accessCodeInput.disabled = false;
                     agentNameInput.disabled = false;
@@ -813,29 +813,29 @@
         client.on('error', function(err) {
             console.error('MQTT error:', err);
             loginStatus.className = 'login-status error';
-            loginStatus.textContent = '> ERROR: CONNECTION FAILED. RETRYING...';
+            loginStatus.textContent = '> 错误：连接失败，正在重试...';
             connStatus.classList.add('error');
             connStatus.classList.remove('reconnecting');
-            connStatusText.textContent = 'ERROR';
+            connStatusText.textContent = '错误';
         });
 
         client.on('reconnect', function() {
             connStatus.classList.add('reconnecting');
             connStatus.classList.remove('error');
-            connStatusText.textContent = 'RECONNECTING...';
+            connStatusText.textContent = '正在重连...';
         });
 
         client.on('close', function() {
             connStatus.classList.add('reconnecting');
-            connStatusText.textContent = 'RECONNECTING...';
+            connStatusText.textContent = '正在重连...';
         });
     }
 
     function enterChat() {
         loginScreen.style.display = 'none';
         chatScreen.classList.add('visible');
-        headerChannel.textContent = 'SECURE CHANNEL: ' + channel.toUpperCase();
-        barChannel.textContent = 'CHANNEL: ' + channel.toUpperCase();
+        headerChannel.textContent = '加密频道：' + channel.toUpperCase();
+        barChannel.textContent = '频道：' + channel.toUpperCase();
         connStatus.classList.add('visible');
         soundToggle.classList.add('visible');
 
@@ -891,7 +891,7 @@
             case 'join':
                 if (data.agent !== agentName) {
                     onlineAgents.set(data.agent, Date.now());
-                    addSystemMessage('*** AGENT ' + data.agent.toUpperCase() + ' HAS JOINED THE CHANNEL ***');
+                    addSystemMessage('*** 探员 ' + data.agent.toUpperCase() + ' 已加入频道 ***');
                     updateAgentCount();
                     beep(660, 0.12);
                 }
@@ -900,7 +900,7 @@
             case 'leave':
                 if (data.agent !== agentName) {
                     onlineAgents.delete(data.agent);
-                    addSystemMessage('*** AGENT ' + data.agent.toUpperCase() + ' HAS DISCONNECTED ***');
+                    addSystemMessage('*** 探员 ' + data.agent.toUpperCase() + ' 已断开连接 ***');
                     updateAgentCount();
                 }
                 break;
@@ -958,7 +958,7 @@
 
     function updateAgentCount() {
         const count = onlineAgents.size;
-        agentsCount.textContent = count + ' ONLINE';
+        agentsCount.textContent = count + ' 人在线';
     }
 
     // === Render ===
@@ -1047,7 +1047,7 @@
 
         // Special commands
         if (text.startsWith('/system ')) {
-            addSystemMessage('*** SYSTEM BROADCAST: ' + text.slice(8) + ' ***');
+            addSystemMessage('*** 系统广播：' + text.slice(8) + ' ***');
             publishMsg({
                 type: 'message',
                 id: uid(),
@@ -1059,7 +1059,7 @@
             // Also store as system message locally
             messages.push({
                 type: 'system',
-                text: '*** SYSTEM BROADCAST: ' + text.slice(8) + ' ***',
+                text: '*** 系统广播：' + text.slice(8) + ' ***',
                 timestamp: new Date().toISOString()
             });
             saveMessages();
@@ -1082,9 +1082,9 @@
             });
         } else if (text === '/clear') {
             messagesEl.innerHTML = '';
-            addSystemMessage('*** SCREEN CLEARED ***');
+            addSystemMessage('*** 屏幕已清除 ***');
         } else if (text === '/help') {
-            addSystemMessage('*** AVAILABLE COMMANDS: /system /alert /clear /help ***');
+            addSystemMessage('*** 可用命令：/system 系统广播  /alert 紧急警报  /clear 清屏  /help 帮助 ***');
         } else {
             const msg = {
                 id: uid(),
@@ -1140,7 +1140,7 @@
         connLog.classList.remove('visible');
         connLog.innerHTML = '';
         loginStatus.className = 'login-status success';
-        loginStatus.textContent = '> SESSION TERMINATED. CONNECTION CLOSED.';
+        loginStatus.textContent = '> 会话已终止，连接已关闭。';
         connectBtn.disabled = false;
         accessCodeInput.disabled = false;
         agentNameInput.disabled = false;
@@ -1164,7 +1164,7 @@
     // === Sound toggle ===
     soundToggle.addEventListener('click', function() {
         soundOn = !soundOn;
-        soundToggle.textContent = 'SOUND: ' + (soundOn ? 'ON' : 'OFF');
+        soundToggle.textContent = '音效：' + (soundOn ? '开' : '关');
     });
 
     // Auto-focus
